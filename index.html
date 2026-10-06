@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0d0f14">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Lights Remote</title>
+<style>
+  :root {
+    --bg: #0d0f14; --card: #171a22; --card2: #1f2330; --text: #f2f4f8; --muted: #9aa3b5;
+    --ok: #3ddc84; --warn: #ffb020; --bad: #ff5468; --accent: #7c8cff; --radius: 18px;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  body { padding: max(14px, env(safe-area-inset-top)) 14px max(24px, env(safe-area-inset-bottom)); }
+  main { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  h1 { font-size: 1.5rem; margin: 4px 0 0; text-align: center; letter-spacing: .5px; }
+  .card { background: var(--card); border-radius: var(--radius); padding: 14px; }
+  .label { color: var(--muted); font-size: .95rem; margin: 0 0 10px 2px; }
+  button { font: inherit; color: var(--text); border: 0; border-radius: 16px; cursor: pointer;
+    min-height: 64px; font-size: 1.15rem; font-weight: 650; background: var(--card2);
+    transition: transform .06s ease, filter .15s ease, opacity .15s; touch-action: manipulation; }
+  button:active { transform: scale(.97); filter: brightness(1.2); }
+  button:disabled { opacity: .4; cursor: default; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  #status { display: flex; align-items: center; gap: 12px; }
+  #dot { width: 16px; height: 16px; border-radius: 50%; background: var(--bad); flex: none;
+    box-shadow: 0 0 12px currentColor; color: var(--bad); }
+  #dot.ok { background: var(--ok); color: var(--ok); }
+  #dot.busy { background: var(--warn); color: var(--warn); animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  #statusText { font-size: 1.1rem; font-weight: 650; }
+  #deviceName { color: var(--muted); font-size: .9rem; margin-top: 2px; word-break: break-all; }
+  #connectBtn { width: 100%; margin-top: 12px; background: var(--accent); color: #0b0d12; font-size: 1.25rem; }
+  #onBtn { background: #2a3a2f; } #offBtn { background: #3a2a2e; }
+  #onBtn, #offBtn { min-height: 96px; font-size: 1.6rem; }
+  .swatch { min-height: 78px; color: #000; text-shadow: 0 0 6px rgba(255,255,255,.4); font-size: 1rem; }
+  .swatch.dark { color: #fff; text-shadow: 0 0 6px rgba(0,0,0,.6); }
+  #sleepBtn { width: 100%; margin-top: 12px; background: #3b0d10; color: #ff8a8a; min-height: 70px; }
+  #rainbowBtn { width: 100%; margin-top: 12px; min-height: 64px; color: #fff;
+    background: linear-gradient(90deg,#ff3b3b,#ffb020,#3ddc84,#3b9bff,#b06bff); text-shadow: 0 0 6px #000; }
+  .pickerWrap { display: flex; align-items: center; gap: 14px; }
+  input[type=color] { -webkit-appearance: none; appearance: none; border: 0; padding: 0; width: 96px; height: 72px;
+    border-radius: 16px; background: none; cursor: pointer; flex: none; }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  input[type=color]::-webkit-color-swatch { border: 0; border-radius: 16px; }
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 44px; background: none; }
+  input[type=range]::-webkit-slider-runnable-track { height: 14px; border-radius: 8px;
+    background: linear-gradient(90deg,#222,#fff); }
+  input[type=range]::-moz-range-track { height: 14px; border-radius: 8px; background: linear-gradient(90deg,#222,#fff); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 40px; height: 40px; margin-top: -13px;
+    border-radius: 50%; background: var(--accent); border: 3px solid #fff; }
+  input[type=range]::-moz-range-thumb { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; }
+  .brightHead { display: flex; justify-content: space-between; align-items: baseline; }
+  #brightVal { font-size: 1.3rem; font-weight: 700; }
+  #msg { display: none; border-radius: var(--radius); padding: 14px 16px; font-size: 1.05rem; line-height: 1.4;
+    background: #3a2a10; color: #ffd58a; }
+  #msg.show { display: block; } #msg.bad { background: #3a1218; color: #ffb3bd; } #msg.good { background: #10301e; color: #9ff0bf; }
+  .note { color: var(--muted); font-size: .9rem; margin: 10px 2px 0; }
+  details { color: var(--muted); font-size: .92rem; }
+  details summary { cursor: pointer; padding: 10px 2px; font-size: 1rem; }
+  details button { min-height: 52px; font-size: 1rem; width: 100%; margin-top: 8px; }
+  #log { white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace; font-size: .8rem; max-height: 220px;
+    overflow: auto; background: #0a0c10; padding: 10px; border-radius: 10px; margin-top: 8px; }
+  .hidden { display: none !important; }
+  .disabledArea { opacity: .45; }
+</style>
+</head>
+<body>
+<main>
+  <h1>💡 Lights Remote</h1>
+
+  <div id="msg" role="alert"></div>
+
+  <section class="card">
+    <div id="status">
+      <div id="dot"></div>
+      <div>
+        <div id="statusText">Not connected</div>
+        <div id="deviceName">Tap the button below to find your lights</div>
+      </div>
+    </div>
+    <button id="connectBtn" type="button">🔗 Connect to lights</button>
+  </section>
+
+  <section class="card">
+    <div class="row">
+      <button id="onBtn" type="button">ON</button>
+      <button id="offBtn" type="button">OFF</button>
+    </div>
+  </section>
+
+  <section class="card" id="colorCard">
+    <p class="label">Colors</p>
+    <div class="grid3" id="swatches"></div>
+    <button id="sleepBtn" type="button">🌙 Sleep mode (dim red)</button>
+    <button id="rainbowBtn" type="button" class="hidden">🌈 Rainbow fade</button>
+    <p class="note hidden" id="colorNote"></p>
+  </section>
+
+  <section class="card" id="pickerCard">
+    <p class="label">Pick any color</p>
+    <div class="pickerWrap">
+      <input type="color" id="picker" value="#ff7820" aria-label="Pick a color">
+      <div class="note" style="margin:0">Tap the square, choose a color. The lights follow as you drag.</div>
+    </div>
+  </section>
+
+  <section class="card" id="brightCard">
+    <div class="brightHead"><p class="label">Brightness</p><span id="brightVal">100%</span></div>
+    <input type="range" id="bright" min="1" max="100" step="1" value="100" aria-label="Brightness">
+  </section>
+
+  <section class="card">
+    <details>
+      <summary>Having trouble? / More options</summary>
+      <div>
+        <p>• Close the KeepSmile app on your phone first. The lights only talk to one device at a time.</p>
+        <p>• On a PC use Chrome or Edge. On iPhone use the free <b>Bluefy</b> app (Safari can't do Bluetooth).</p>
+        <p>• Keep the lights plugged in and within a few meters.</p>
+        <button id="pickAnyBtn" type="button">Show ALL Bluetooth devices (if your light isn't listed)</button>
+        <button id="disconnectBtn" type="button">Disconnect</button>
+        <div id="log"></div>
+      </div>
+    </details>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------------------------------------------------------------------------
+  // Protocol table (sources: themooer1/cheshire, H4ch1Net/ks-led-controller,
+  // keepsmile crate protocol_notes.md, jtaft/bluetooth-keepsmile-lights).
+  // All short UUIDs use the Bluetooth base: 0000xxxx-0000-1000-8000-00805f9b34fb
+  // ---------------------------------------------------------------------------
+  function uuid(short16) { return '0000' + short16.toLowerCase() + '-0000-1000-8000-00805f9b34fb'; }
+  var SVC = { AFD0: uuid('afd0'), FFF0: uuid('fff0'), AE00: uuid('ae00'), FF00: uuid('ff00') };
+  var CHR = { AFD1: uuid('afd1'), AFD3: uuid('afd3'), FFF3: uuid('fff3'), AE01: uuid('ae01'), AE02: uuid('ae02'), AE10: uuid('ae10') };
+
+  function clamp(v, lo, hi) { v = Math.round(Number(v) || 0); return v < lo ? lo : (v > hi ? hi : v); }
+
+  // Protocol "families"
+  var PROTOCOLS = {
+    // KS03~ : service AFD0, write AFD1. Hardware-verified by ks-led-controller; matches all 4 sources.
+    // on 5B F0 00 B5 / off 5B 0F 00 B5 ; color 5A 00 01 RR GG BB 00 LL 00 A5 (RGB 0-255, LL brightness 1-100)
+    // native effect 5C 00 EE SS LL 00 C5 (EE 0x82 seven-colour fade, SS speed 0-100, LL 1-100)
+    ext: {
+      name: 'KS03~ style', hasColor: true, hasBrightness: true, hasEffects: true,
+      on: function () { return [[0x5B, 0xF0, 0x00, 0xB5]]; },
+      off: function () { return [[0x5B, 0x0F, 0x00, 0xB5]]; },
+      color: function (r, g, b, br) {
+        return [[0x5A, 0x00, 0x01, clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255), 0x00, clamp(br, 1, 100), 0x00, 0xA5]];
+      },
+      rainbow: function (br) { return [[0x5C, 0x00, 0x82, 50, clamp(br, 1, 100), 0x00, 0xC5]]; }
+    },
+    // KS03- / KS04- : service FFF0, write FFF3 (cheshire ks03_old + ks-led-controller "standard RGB").
+    // on 7E 04 04 F0 01 01 FF 00 EF / off 7E 04 04 10 01 00 FF 00 EF (cheshire), plus 5B F0 01 B5 / 5B 0F 01 B5 (ks-led) as fallback
+    // color 7E 07 05 03 RR GG BB 00 EF ; brightness 7E 04 01 LL FF FF FF 00 EF (LL 0-100)
+    std: {
+      name: 'KS03- style', hasColor: true, hasBrightness: true, hasEffects: false,
+      on: function () { return [[0x7E, 0x04, 0x04, 0xF0, 0x01, 0x01, 0xFF, 0x00, 0xEF], [0x5B, 0xF0, 0x01, 0xB5]]; },
+      off: function () { return [[0x7E, 0x04, 0x04, 0x10, 0x01, 0x00, 0xFF, 0x00, 0xEF], [0x5B, 0x0F, 0x01, 0xB5]]; },
+      color: function (r, g, b, br) {
+        return [[0x7E, 0x07, 0x05, 0x03, clamp(r, 0, 255), clamp(g, 0, 255), clamp(b, 0, 255), 0x00, 0xEF],
+                [0x7E, 0x04, 0x01, clamp(br, 0, 100), 0xFF, 0xFF, 0xFF, 0x00, 0xEF]];
+      }
+    },
+    // KS01- / KS02- : service AE00, write AE01, "standard RGB" per ks-led-controller (unverified, no brightness packet,
+    // so brightness is applied by scaling RGB).
+    stdScaled: {
+      name: 'KS01/KS02 style (experimental)', hasColor: true, hasBrightness: true, hasEffects: false,
+      on: function () { return [[0x5B, 0xF0, 0x01, 0xB5], [0x7E, 0x04, 0x04, 0xF0, 0x01, 0x01, 0xFF, 0x00, 0xEF]]; },
+      off: function () { return [[0x5B, 0x0F, 0x01, 0xB5], [0x7E, 0x04, 0x04, 0x10, 0x01, 0x00, 0xFF, 0x00, 0xEF]]; },
+      color: function (r, g, b, br) {
+        var k = clamp(br, 1, 100) / 100;
+        return [[0x7E, 0x07, 0x05, 0x03, clamp(r * k, 0, 255), clamp(g * k, 0, 255), clamp(b * k, 0, 255), 0x00, 0xEF]];
+      }
+    },
+    // Other KS prefixes: only power is known (5B F0 01 B5 / 5B 0F 01 B5, ks-led-controller, unverified).
+    powerOnly: {
+      name: 'power only (experimental)', hasColor: false, hasBrightness: false, hasEffects: false,
+      on: function () { return [[0x5B, 0xF0, 0x01, 0xB5]]; },
+      off: function () { return [[0x5B, 0x0F, 0x01, 0xB5]]; }
+    }
+  };
+
+  // Name prefix (first 5 chars) -> GATT service/characteristic + protocol
+  var PROFILES = {
+    'KS03~': { service: SVC.AFD0, write: CHR.AFD1, proto: 'ext' },
+    'KS03-': { service: SVC.FFF0, write: CHR.FFF3, proto: 'std' },
+    'KS04-': { service: SVC.FFF0, write: CHR.FFF3, proto: 'std' },
+    'KS01-': { service: SVC.AE00, write: CHR.AE01, proto: 'stdScaled' },
+    'KS02-': { service: SVC.AE00, write: CHR.AE01, proto: 'stdScaled' },
+    'KS05-': { service: SVC.AE00, write: CHR.AE02, proto: 'powerOnly' },
+    'KS15~': { service: SVC.AFD0, write: CHR.AFD3, proto: 'powerOnly' }
+  };
+  ['KS04~', 'KS07-', 'KS08-', 'KS09-', 'KS10-', 'KS11-', 'KS12-', 'KS13-'].forEach(function (p) {
+    PROFILES[p] = { service: SVC.AE00, write: CHR.AE10, proto: 'powerOnly' };
+  });
+  // Used when the name is unknown/missing: try services in this order.
+  var PROBE_ORDER = [
+    { service: SVC.AFD0, write: CHR.AFD1, proto: 'ext' },
+    { service: SVC.FFF0, write: CHR.FFF3, proto: 'std' },
+    { service: SVC.AE00, write: CHR.AE01, proto: 'stdScaled' },
+    { service: SVC.AE00, write: CHR.AE10, proto: 'powerOnly' },
+    { service: SVC.AE00, write: CHR.AE02, proto: 'powerOnly' }
+  ];
+  var OPTIONAL_SERVICES = [SVC.AFD0, SVC.FFF0, SVC.AE00, SVC.FF00];
+
+  var PRESETS = [
+    { name: 'Red', rgb: [255, 0, 0], dark: true },
+    { name: 'Warm', rgb: [255, 120, 30] },
+    { name: 'Blue', rgb: [0, 60, 255], dark: true },
+    { name: 'Purple', rgb: [150, 0, 255], dark: true },
+    { name: 'Green', rgb: [0, 255, 40] },
+    { name: 'White', rgb: [255, 255, 255] }
+  ];
+  var SLEEP = { rgb: [255, 0, 0], brightness: 8 };
+
+  // ---------------------------------------------------------------------------
+  // State
+  // ---------------------------------------------------------------------------
+  var $ = function (id) { return document.getElementById(id); };
+  var saved = {};
+  try { saved = JSON.parse(localStorage.getItem('ksRemote') || '{}') || {}; } catch (e) { saved = {}; }
+  var state = {
+    device: null, server: null, chr: null, proto: null, profileKey: '',
+    connecting: false, userDisconnect: false, retries: 0,
+    power: null, // unknown until we send something (lamps don't report state)
+    rgb: Array.isArray(saved.rgb) && saved.rgb.length === 3 ? saved.rgb : [255, 120, 30],
+    brightness: clamp(saved.brightness || 100, 1, 100)
+  };
+  function persist() {
+    try { localStorage.setItem('ksRemote', JSON.stringify({ rgb: state.rgb, brightness: state.brightness, lastName: state.device ? state.device.name : saved.lastName })); } catch (e) {}
+  }
+
+  function log(text) {
+    var t = new Date().toLocaleTimeString();
+    var el = $('log');
+    el.textContent = '[' + t + '] ' + text + '\n' + el.textContent.slice(0, 6000);
+    if (window.console) console.log('[lights]', text);
+  }
+  function hex(bytes) { return bytes.map(function (b) { return ('0' + b.toString(16)).slice(-2); }).join('').toUpperCase(); }
+
+  var msgTimer = null;
+  function showMsg(text, kind, sticky) {
+    var el = $('msg');
+    el.textContent = text;
+    el.className = 'show' + (kind ? ' ' + kind : '');
+    clearTimeout(msgTimer);
+    if (!sticky) msgTimer = setTimeout(hideMsg, 9000);
+  }
+  function hideMsg() { $('msg').className = ''; }
+
+  function setStatus(kind, text, sub) {
+    $('dot').className = kind === 'ok' ? 'ok' : (kind === 'busy' ? 'busy' : '');
+    $('statusText').textContent = text;
+    if (sub !== undefined) $('deviceName').textContent = sub;
+    var btn = $('connectBtn');
+    if (kind === 'ok') { btn.textContent = '🔄 Pick a different light'; btn.style.background = 'var(--card2)'; btn.style.color = 'var(--text)'; }
+    else if (state.device) { btn.textContent = '🔄 Reconnect'; btn.style.background = ''; btn.style.color = ''; }
+    else { btn.textContent = '🔗 Connect to lights'; btn.style.background = ''; btn.style.color = ''; }
+    btn.disabled = kind === 'busy';
+  }
+
+  function updateCapabilityUI() {
+    var p = state.proto ? PROTOCOLS[state.proto] : null;
+    var colorOk = !p || p.hasColor;
+    ['colorCard', 'pickerCard', 'brightCard'].forEach(function (id) { $(id).classList.toggle('disabledArea', !colorOk); });
+    $('rainbowBtn').classList.toggle('hidden', !(p && p.hasEffects));
+    var note = $('colorNote');
+    if (p && !p.hasColor) {
+      note.textContent = 'Colors for this light model are not known yet. On/Off may still work.';
+      note.classList.remove('hidden');
+    } else if (p && state.proto === 'stdScaled') {
+      note.textContent = 'This model is experimental: colors may or may not work.';
+      note.classList.remove('hidden');
+    } else { note.classList.add('hidden'); }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Environment checks
+  // ---------------------------------------------------------------------------
+  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  function bluetoothProblem() {
+    if (!window.isSecureContext) {
+      return location.protocol === 'file:'
+        ? 'This page was opened as a file, so Bluetooth is blocked. On the PC, double-click "Lights Remote" on the Desktop instead.'
+        : 'Bluetooth needs a secure (https or localhost) address. Open the page from an https:// link.';
+    }
+    if (!navigator.bluetooth) {
+      return isIOS
+        ? 'iPhone Safari and Chrome can\'t use Bluetooth. Open this page in the free "Bluefy" app instead.'
+        : 'This browser can\'t use Bluetooth. Use Chrome or Edge on PC, or the Bluefy app on iPhone.';
+    }
+    return null;
+  }
+
+  function friendlyError(err) {
+    var name = (err && err.name) || '';
+    var m = String((err && err.message) || err || '');
+    if (name === 'NotFoundError' && /cancel/i.test(m)) return { text: 'No light picked. Tap Connect and choose the one whose name starts with "KS".', kind: '' };
+    if (name === 'NotFoundError' && /adapter|bluetooth.*(off|unavailable|not available)/i.test(m)) return { text: 'Bluetooth looks turned off. Turn Bluetooth on and try again.', kind: 'bad' };
+    if (name === 'NotFoundError') return { text: 'Couldn\'t find the light. Make sure it\'s plugged in, close by, and the KeepSmile app is fully closed.', kind: 'bad' };
+    if (name === 'NotAllowedError' || /globally disabled|permission/i.test(m)) return { text: 'Bluetooth permission was blocked. Allow Bluetooth for this page/app, and make sure Bluetooth is on.', kind: 'bad' };
+    if (name === 'SecurityError') return { text: bluetoothProblem() || 'The browser blocked Bluetooth here. Use Chrome/Edge on PC or Bluefy on iPhone.', kind: 'bad' };
+    if (name === 'NetworkError' || /connect|gatt|timed? ?out|disconnected|no longer in range/i.test(m)) {
+      return { text: 'Couldn\'t connect. Close the KeepSmile app on your phone first (the lights only connect to one device at a time). Then tap Reconnect.', kind: 'bad' };
+    }
+    if (name === 'NotSupportedError') return { text: 'This light uses a layout this page doesn\'t know yet. On/Off may not work.', kind: 'bad' };
+    return { text: 'Something went wrong: ' + (m || name || 'unknown error') + '. Tap Reconnect to try again.', kind: 'bad' };
+  }
+
+  function withTimeout(promise, ms, what) {
+    return new Promise(function (resolve, reject) {
+      var t = setTimeout(function () { var e = new Error(what + ' timed out'); e.name = 'NetworkError'; reject(e); }, ms);
+      promise.then(function (v) { clearTimeout(t); resolve(v); }, function (e) { clearTimeout(t); reject(e); });
+    });
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  // ---------------------------------------------------------------------------
+  // Connecting
+  // ---------------------------------------------------------------------------
+  async function chooseDevice(acceptAll) {
+    var problem = bluetoothProblem();
+    if (problem) { showMsg(problem, 'bad', true); throw Object.assign(new Error(problem), { handled: true }); }
+    var opts = acceptAll
+      ? { acceptAllDevices: true, optionalServices: OPTIONAL_SERVICES }
+      : { filters: [{ namePrefix: 'KS' }, { services: [SVC.AFD0] }, { services: [SVC.FFF0] }], optionalServices: OPTIONAL_SERVICES };
+    // Must be called directly from the tap (no awaits before this line).
+    var device = await navigator.bluetooth.requestDevice(opts);
+    attachDevice(device);
+    return device;
+  }
+
+  function attachDevice(device) {
+    if (state.device && state.device !== device) {
+      try { state.device.removeEventListener('gattserverdisconnected', onDisconnected); } catch (e) {}
+      try { if (state.device.gatt.connected) state.device.gatt.disconnect(); } catch (e) {}
+    }
+    state.device = device;
+    state.chr = null; state.proto = null;
+    device.removeEventListener('gattserverdisconnected', onDisconnected);
+    device.addEventListener('gattserverdisconnected', onDisconnected);
+    log('Picked device: ' + (device.name || '(no name)') + ' id=' + device.id);
+  }
+
+  async function findCharacteristic(server, name) {
+    var key = (name || '').slice(0, 5).toUpperCase();
+    var tries = [];
+    if (PROFILES[key]) tries.push(Object.assign({ key: key }, PROFILES[key]));
+    PROBE_ORDER.forEach(function (p) { tries.push(Object.assign({ key: 'auto-detect' }, p)); });
+    var services = {}; // uuid -> service object, or null if absent
+    var lastErr = null;
+    for (var i = 0; i < tries.length; i++) {
+      var t = tries[i];
+      if (services[t.service] === null) continue;
+      try {
+        if (!services[t.service]) services[t.service] = await server.getPrimaryService(t.service);
+      } catch (e) { services[t.service] = null; lastErr = e; continue; }
+      try {
+        var chr = await services[t.service].getCharacteristic(t.write);
+        var props = chr.properties ? ['write', 'writeWithoutResponse'].filter(function (k) { return chr.properties[k]; }).join(',') : '?';
+        log('Using service ' + t.service.slice(4, 8) + ' / write ' + t.write.slice(4, 8) + ' (' + PROTOCOLS[t.proto].name + ', match: ' + t.key + ', props: ' + props + ')');
+        return { chr: chr, proto: t.proto, key: t.key };
+      } catch (e) { lastErr = e; }
+    }
+    var err = new Error('No known KeepSmile control service found' + (lastErr ? ' (' + lastErr.message + ')' : ''));
+    err.name = 'NotSupportedError';
+    throw err;
+  }
+
+  var connectPromise = null;
+  function connect() {
+    // Share one in-flight attempt between the Connect button, queued commands and auto-reconnect.
+    if (!connectPromise) connectPromise = doConnect().finally(function () { connectPromise = null; });
+    return connectPromise;
+  }
+  async function doConnect() {
+    if (!state.device) throw Object.assign(new Error('No device chosen'), { name: 'NotFoundError' });
+    state.connecting = true; state.userDisconnect = false;
+    var dev = state.device;
+    setStatus('busy', 'Connecting…', dev.name || 'KeepSmile light');
+    try {
+      var server = await withTimeout(dev.gatt.connect(), 15000, 'Connecting');
+      await sleep(300); // let the lamp settle (ks-led-controller uses a short settle delay)
+      var found = await withTimeout(findCharacteristic(server, dev.name), 15000, 'Service discovery');
+      state.server = server; state.chr = found.chr; state.proto = found.proto; state.profileKey = found.key;
+      state.retries = 0;
+      setStatus('ok', 'Connected ✓', (dev.name || 'KeepSmile light') + ' · ' + PROTOCOLS[found.proto].name);
+      updateCapabilityUI();
+      hideMsg();
+      persist();
+    } catch (e) {
+      try { if (dev.gatt.connected) dev.gatt.disconnect(); } catch (x) {}
+      state.chr = null;
+      setStatus('', 'Not connected', (dev.name || 'KeepSmile light') + ' · tap Reconnect');
+      throw e;
+    } finally {
+      state.connecting = false;
+    }
+  }
+
+  function onDisconnected() {
+    log('Disconnected');
+    state.chr = null;
+    setStatus('', 'Disconnected', (state.device && state.device.name ? state.device.name : 'KeepSmile light') + ' · tap Reconnect');
+    if (state.userDisconnect || state.retries >= 3) return;
+    state.retries++;
+    var delay = 1500 * state.retries;
+    log('Auto-reconnect attempt ' + state.retries + ' in ' + delay + 'ms');
+    setTimeout(function () {
+      if (state.chr || state.userDisconnect) return;
+      connect().catch(function (e) { log('Auto-reconnect failed: ' + e.message); });
+    }, delay);
+  }
+
+  // Try to silently reconnect to a light this browser already has permission for (Chrome getDevices, if enabled).
+  async function tryRememberedDevice() {
+    if (bluetoothProblem() || !navigator.bluetooth.getDevices) return;
+    try {
+      var devices = await navigator.bluetooth.getDevices();
+      var ks = devices.filter(function (d) { return d.name && /^KS/i.test(d.name); });
+      var pick = ks.filter(function (d) { return d.name === saved.lastName; })[0] || ks[0];
+      if (!pick) return;
+      attachDevice(pick);
+      setStatus('', 'Not connected', pick.name + ' · tap Reconnect');
+      await connect();
+    } catch (e) { log('Remembered device not reachable: ' + e.message); }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Writing (serialized queue, latest value wins per kind, ~80 ms spacing)
+  // ---------------------------------------------------------------------------
+  async function writePacket(bytes) {
+    var c = state.chr;
+    if (!c) throw Object.assign(new Error('Not connected'), { name: 'NetworkError' });
+    var data = new Uint8Array(bytes);
+    var p = c.properties || {};
+    var attempts = [];
+    // All sources write without response on KeepSmile; fall back to with-response if that's all the characteristic offers.
+    if (p.writeWithoutResponse && typeof c.writeValueWithoutResponse === 'function') attempts.push('writeValueWithoutResponse');
+    if (p.write) attempts.push(typeof c.writeValueWithResponse === 'function' ? 'writeValueWithResponse' : 'writeValue');
+    if (!attempts.length) {
+      if (typeof c.writeValueWithoutResponse === 'function') attempts.push('writeValueWithoutResponse');
+      attempts.push('writeValue');
+    }
+    var lastErr;
+    for (var i = 0; i < attempts.length; i++) {
+      try {
+        await withTimeout(c[attempts[i]](data), 5000, 'Write');
+        log('→ ' + hex(bytes) + ' (' + attempts[i] + ')');
+        return;
+      } catch (e) { lastErr = e; }
+    }
+    throw lastErr;
+  }
+
+  // Queue entries are builder functions, so packets are built with the right protocol
+  // once the light is connected and identified.
+  var queue = [];      // ordered list of keys ('power', 'color')
+  var pending = {};    // key -> builder function (latest wins)
+  var pumping = false;
+  var choosing = false; // device chooser open: wait for it before sending
+  function clearQueue() { queue = []; pending = {}; }
+  function reportError(e, prefix) {
+    log((prefix || 'Error') + ': ' + (e && e.name || '') + ' ' + (e && e.message || e));
+    if (!(e && e.handled)) { var f = friendlyError(e); showMsg(f.text, f.kind); }
+  }
+  function isConnected() { return !!(state.chr && state.device && state.device.gatt && state.device.gatt.connected); }
+
+  function enqueue(key, build) {
+    if (!(key in pending)) queue.push(key);
+    pending[key] = build;
+    if (!choosing) pump();
+  }
+
+  async function pump() {
+    if (pumping) return;
+    pumping = true;
+    try {
+      outer:
+      while (queue.length) {
+        if (!isConnected()) {
+          if (!state.device) { clearQueue(); break; }
+          try { await connect(); } catch (e) { clearQueue(); reportError(e, 'Connect failed'); break; }
+          if (!isConnected()) { clearQueue(); break; }
+        }
+        var key = queue.shift();
+        var build = pending[key];
+        delete pending[key];
+        var packets = build ? build(PROTOCOLS[state.proto]) : null;
+        if (!packets || !packets.length) continue;
+        for (var i = 0; i < packets.length; i++) {
+          try { await writePacket(packets[i]); }
+          catch (e) {
+            state.chr = null;
+            clearQueue();
+            setStatus('', 'Not connected', (state.device && state.device.name || 'KeepSmile light') + ' · tap Reconnect');
+            reportError(e, 'Write failed');
+            break outer;
+          }
+          await sleep(80);
+        }
+      }
+    } finally { pumping = false; }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Actions
+  // ---------------------------------------------------------------------------
+  function proto() { return state.proto ? PROTOCOLS[state.proto] : null; }
+
+  // First tap with no light chosen yet: open the chooser right away (browsers require
+  // requestDevice to be called directly from a tap), then send what was queued.
+  function ready() {
+    var problem = bluetoothProblem();
+    if (problem) { showMsg(problem, 'bad', true); return false; }
+    if (!state.device && !choosing) {
+      choosing = true;
+      chooseDevice(false).then(function () { choosing = false; pump(); })
+        .catch(function (e) { choosing = false; clearQueue(); reportError(e, 'Choose failed'); });
+    }
+    return true;
+  }
+
+  function queuePowerOn() { state.power = true; enqueue('power', function (p) { return p.on(); }); }
+
+  function doPower(on) {
+    if (!ready()) return;
+    state.power = on;
+    enqueue('power', function (p) { return on ? p.on() : p.off(); });
+  }
+
+  function sendColor(rgb, brightness, opts) {
+    opts = opts || {};
+    state.rgb = rgb.slice(0, 3);
+    if (brightness != null) state.brightness = clamp(brightness, 1, 100);
+    syncControls();
+    persist();
+    if (!ready()) return;
+    var p = proto();
+    if (p && !p.hasColor) { showMsg('Colors for this light model are not known yet. Only On/Off is available.', ''); return; }
+    if (opts.forceOn || state.power !== true) queuePowerOn();
+    var r = state.rgb[0], g = state.rgb[1], b = state.rgb[2], br = state.brightness;
+    enqueue('color', function (q) { return q.hasColor ? q.color(r, g, b, br) : null; });
+  }
+
+  function sendRainbow() {
+    if (!ready()) return;
+    if (state.power !== true) queuePowerOn();
+    var br = state.brightness;
+    enqueue('color', function (q) { return q.rainbow ? q.rainbow(br) : null; });
+  }
+
+  function rgbToHex(rgb) { return '#' + rgb.map(function (v) { return ('0' + clamp(v, 0, 255).toString(16)).slice(-2); }).join(''); }
+  function hexToRgb(h) { var m = /^#?([0-9a-f]{6})$/i.exec(h); if (!m) return null; var n = parseInt(m[1], 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+  function syncControls() {
+    $('bright').value = state.brightness;
+    $('brightVal').textContent = state.brightness + '%';
+    $('picker').value = rgbToHex(state.rgb);
+  }
+
+  // ---------------------------------------------------------------------------
+  // UI wiring
+  // ---------------------------------------------------------------------------
+  var sw = $('swatches');
+  PRESETS.forEach(function (p) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'swatch' + (p.dark ? ' dark' : '');
+    b.style.background = rgbToHex(p.rgb);
+    b.textContent = p.name;
+    b.addEventListener('click', function () { sendColor(p.rgb, null, { forceOn: true }); });
+    sw.appendChild(b);
+  });
+
+  $('onBtn').addEventListener('click', function () { doPower(true); });
+  $('offBtn').addEventListener('click', function () { doPower(false); });
+  $('sleepBtn').addEventListener('click', function () { sendColor(SLEEP.rgb, SLEEP.brightness, { forceOn: true }); });
+  $('rainbowBtn').addEventListener('click', sendRainbow);
+
+  $('picker').addEventListener('input', function (e) { var rgb = hexToRgb(e.target.value); if (rgb) sendColor(rgb); });
+  $('picker').addEventListener('change', function (e) { var rgb = hexToRgb(e.target.value); if (rgb) sendColor(rgb); });
+  $('bright').addEventListener('input', function (e) {
+    state.brightness = clamp(e.target.value, 1, 100);
+    $('brightVal').textContent = state.brightness + '%';
+    if (state.chr) sendColor(state.rgb, state.brightness);
+  });
+  $('bright').addEventListener('change', function (e) { sendColor(state.rgb, clamp(e.target.value, 1, 100)); });
+
+  function connectClicked(acceptAll) {
+    hideMsg();
+    var problem = bluetoothProblem();
+    if (problem) { showMsg(problem, 'bad', true); return; }
+    var connectedNow = state.chr && state.device && state.device.gatt.connected;
+    // Not connected but we know the device -> plain reconnect. Otherwise open the chooser.
+    var p = (!acceptAll && state.device && !connectedNow) ? connect() : chooseDevice(!!acceptAll).then(connect);
+    p.then(function () { showMsg('Connected! Tap a button to control your lights.', 'good'); })
+     .catch(function (e) {
+       if (e.handled) return;
+       var f = friendlyError(e); showMsg(f.text, f.kind);
+       log('Connect failed: ' + (e.name || '') + ' ' + e.message);
+     });
+  }
+  $('connectBtn').addEventListener('click', function () { connectClicked(false); });
+  $('pickAnyBtn').addEventListener('click', function () { connectClicked(true); });
+  $('disconnectBtn').addEventListener('click', function () {
+    state.userDisconnect = true;
+    try { if (state.device && state.device.gatt.connected) state.device.gatt.disconnect(); } catch (e) {}
+    state.chr = null;
+    setStatus('', 'Disconnected', state.device ? (state.device.name || 'KeepSmile light') + ' · tap Reconnect' : 'Tap the button below to find your lights');
+  });
+
+  // Init
+  syncControls();
+  updateCapabilityUI();
+  var problem = bluetoothProblem();
+  if (problem) {
+    showMsg(problem, 'bad', true);
+    setStatus('', 'Bluetooth unavailable here', isIOS ? 'Open this page in the Bluefy app' : 'Use Chrome or Edge');
+  } else {
+    if (navigator.bluetooth.getAvailability) {
+      navigator.bluetooth.getAvailability().then(function (ok) {
+        if (!ok) showMsg('Bluetooth seems to be off or missing on this device. Turn it on, then tap Connect.', 'bad', true);
+      }).catch(function () {});
+    }
+    tryRememberedDevice();
+  }
+  log('Ready. secure=' + window.isSecureContext + ' bluetooth=' + !!navigator.bluetooth + ' ua=' + navigator.userAgent);
+})();
+</script>
+</body>
+</html>
